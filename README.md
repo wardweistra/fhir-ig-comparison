@@ -44,7 +44,7 @@ dotnet restore
 dotnet run --project FhirIgComparison.Web
 ```
 
-Open the URL shown in the console (typically `https://localhost:7xxx`).
+Open the URL shown in the console.
 
 ## Build and deploy to Firebase
 
