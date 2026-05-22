@@ -65,6 +65,73 @@ public class CompatibilityAnalyzerTests
     }
 
     [Fact]
+    public void Binding_compatible_unversioned_and_versioned()
+    {
+        const string baseUrl = "http://hl7.org/fhir/ValueSet/languages";
+        const string versionedUrl = "http://hl7.org/fhir/ValueSet/languages|4.0.1";
+
+        var elements = new SnapshotElement?[]
+        {
+            ElementWithBinding(baseUrl, "Required"),
+            ElementWithBinding(versionedUrl, "Required")
+        };
+
+        var result = CompatibilityAnalyzer.AnalyzeBinding(elements);
+
+        Assert.Equal(CompatibilityStatus.Compatible, result.Status);
+        Assert.Equal(versionedUrl, result.CombinedValue);
+    }
+
+    [Fact]
+    public void Binding_compatible_both_versioned_same_version()
+    {
+        const string versionedUrl = "http://hl7.org/fhir/ValueSet/languages|4.0.1";
+
+        var elements = new SnapshotElement?[]
+        {
+            ElementWithBinding(versionedUrl, "Required"),
+            ElementWithBinding(versionedUrl, "Required")
+        };
+
+        var result = CompatibilityAnalyzer.AnalyzeBinding(elements);
+
+        Assert.Equal(CompatibilityStatus.Compatible, result.Status);
+        Assert.Equal(versionedUrl, result.CombinedValue);
+    }
+
+    [Fact]
+    public void Binding_conflict_different_versions()
+    {
+        var elements = new SnapshotElement?[]
+        {
+            ElementWithBinding("http://hl7.org/fhir/ValueSet/languages|4.0.1", "Required"),
+            ElementWithBinding("http://hl7.org/fhir/ValueSet/languages|5.0.0", "Required")
+        };
+
+        var result = CompatibilityAnalyzer.AnalyzeBinding(elements);
+
+        Assert.Equal(CompatibilityStatus.Conflict, result.Status);
+        Assert.Equal("incompatible", result.CombinedValue);
+    }
+
+    [Fact]
+    public void Binding_compatible_both_unversioned()
+    {
+        const string baseUrl = "http://hl7.org/fhir/ValueSet/languages";
+
+        var elements = new SnapshotElement?[]
+        {
+            ElementWithBinding(baseUrl, "Required"),
+            ElementWithBinding(baseUrl, "Required")
+        };
+
+        var result = CompatibilityAnalyzer.AnalyzeBinding(elements);
+
+        Assert.Equal(CompatibilityStatus.Compatible, result.Status);
+        Assert.Equal(baseUrl, result.CombinedValue);
+    }
+
+    [Fact]
     public void Extensions_conflict_when_profiles_constrain_different_urls_on_same_row()
     {
         var elements = new SnapshotElement?[]

@@ -1,3 +1,4 @@
+using FhirIgComparison.Core;
 using FhirIgComparison.Core.Models;
 
 namespace FhirIgComparison.Core.Services;
@@ -106,17 +107,18 @@ public sealed class CompatibilityAnalyzer
 
         if (significant.Count == 0)
         {
-            var urls = bindings.Select(b => b.Url).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var urls = bindings.Select(b => b.Url).ToList();
+            var compatible = CanonicalReference.AreBindingsCompatible(urls);
             return new CompatibilityResult
             {
-                CombinedValue = urls.Count == 1 ? urls[0] : "varies",
-                Status = urls.Count <= 1 ? CompatibilityStatus.Compatible : CompatibilityStatus.Warning,
-                Explanation = "Non-required bindings differ."
+                CombinedValue = compatible ? CanonicalReference.GetCompatDisplayUrl(urls) : "varies",
+                Status = compatible ? CompatibilityStatus.Compatible : CompatibilityStatus.Warning,
+                Explanation = compatible ? null : "Non-required bindings differ."
             };
         }
 
-        var distinctUrls = significant.Select(b => b.Url).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        if (distinctUrls.Count > 1)
+        var significantUrls = significant.Select(b => b.Url).ToList();
+        if (!CanonicalReference.AreBindingsCompatible(significantUrls))
         {
             return new CompatibilityResult
             {
@@ -126,12 +128,13 @@ public sealed class CompatibilityAnalyzer
             };
         }
 
+        var compatDisplayUrl = CanonicalReference.GetCompatDisplayUrl(significantUrls);
         var strengths = significant.Select(b => b.Strength).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (strengths.Count > 1)
         {
             return new CompatibilityResult
             {
-                CombinedValue = distinctUrls[0],
+                CombinedValue = compatDisplayUrl,
                 Status = CompatibilityStatus.Warning,
                 Explanation = "Same ValueSet with different binding strengths."
             };
@@ -139,7 +142,7 @@ public sealed class CompatibilityAnalyzer
 
         return new CompatibilityResult
         {
-            CombinedValue = distinctUrls[0],
+            CombinedValue = compatDisplayUrl,
             Status = CompatibilityStatus.Compatible
         };
     }
