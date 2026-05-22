@@ -1,0 +1,11 @@
+{
+  "name": "project",
+  "version": "0.1.0",
+  "description": "Put a description here",
+  "fhirVersions": [
+    "5.0.0"
+  ],
+  "dependencies": {
+    "ee.fhir.base": "latest"
+  }
+}

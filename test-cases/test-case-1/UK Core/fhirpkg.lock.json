@@ -1,0 +1,8 @@
+{
+  "updated": "2026-05-19T12:08:21.840419+02:00",
+  "dependencies": {
+    "fhir.r4.ukcore.stu3.currentbuild": "0.28.0-pre-release",
+    "hl7.fhir.r4.core": "4.0.1"
+  },
+  "missing": {}
+}

@@ -1,0 +1,78 @@
+@if (Summary is not null)
+{
+    @if (Summary.HasFhirVersionMismatch)
+    {
+        <div class="alert alert-danger version-warning" role="alert">
+            Comparison is structural only (snapshot fields); cross-version semantic equivalence is not validated.
+        </div>
+    }
+
+    <div class="table-responsive profile-summary-scroll">
+        <table class="table table-sm profile-summary-table">
+            <thead>
+                <tr>
+                    <th>Property</th>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <th>@col.IgFolderName</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Profile</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td>
+                            <strong>@col.ProfileName</strong>
+                            <div class="canonical">
+                                <CanonicalLinkedText Text="@col.CanonicalUrl" PackageScope="@col.PackageScope" />
+                            </div>
+                        </td>
+                    }
+                </tr>
+                <tr>
+                    <td>Base definition</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td class="canonical">
+                            <CanonicalLinkedText Text="@col.BaseDefinition" PackageScope="@col.PackageScope" />
+                        </td>
+                    }
+                </tr>
+                <tr>
+                    <td>FHIR version</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td>@col.FhirVersion</td>
+                    }
+                </tr>
+                <tr>
+                    <td>Constrained elements</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td>@col.ConstrainedElementCount</td>
+                    }
+                </tr>
+                <tr>
+                    <td>Must-support count</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td>@col.MustSupportCount</td>
+                    }
+                </tr>
+                <tr>
+                    <td>Extension elements</td>
+                    @foreach (var col in Summary.Columns)
+                    {
+                        <td>@col.ExtensionCount</td>
+                    }
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public ProfileComparisonSummary? Summary { get; set; }
+}

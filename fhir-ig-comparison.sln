@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FhirIgComparison.Web", "FhirIgComparison.Web\FhirIgComparison.Web.csproj", "{7183FB5F-F3E7-4A7B-E5F5-8A39F33C9428}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FhirIgComparison.Core", "FhirIgComparison.Core\FhirIgComparison.Core.csproj", "{8D3D8AF6-6DD8-0674-8FC7-5A469C174F88}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7183FB5F-F3E7-4A7B-E5F5-8A39F33C9428}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7183FB5F-F3E7-4A7B-E5F5-8A39F33C9428}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7183FB5F-F3E7-4A7B-E5F5-8A39F33C9428}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7183FB5F-F3E7-4A7B-E5F5-8A39F33C9428}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D3D8AF6-6DD8-0674-8FC7-5A469C174F88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D3D8AF6-6DD8-0674-8FC7-5A469C174F88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D3D8AF6-6DD8-0674-8FC7-5A469C174F88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D3D8AF6-6DD8-0674-8FC7-5A469C174F88}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D1D96BBE-5992-41AD-9F1D-A6589C551E10}
+	EndGlobalSection
+EndGlobal

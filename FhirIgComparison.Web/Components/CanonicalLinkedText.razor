@@ -1,0 +1,16 @@
+@foreach (var segment in SimplifierUrls.SplitCanonicalUrls(Text))
+{
+    if (segment.IsCanonicalUrl && SimplifierUrls.GetResolveUrl(PackageScope, segment.Text) is { } url)
+    {
+        <a href="@url" class="canonical-link" target="_blank" rel="noopener noreferrer">@segment.Text</a>
+    }
+    else
+    {
+        @segment.Text
+    }
+}
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? PackageScope { get; set; }
+}

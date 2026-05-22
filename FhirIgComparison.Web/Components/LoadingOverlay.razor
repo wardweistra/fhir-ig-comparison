@@ -1,0 +1,72 @@
+@if (IsVisible && Progress is not null)
+{
+    <div class="loading-overlay" role="status" aria-live="polite" aria-busy="true">
+        <div class="loading-card">
+            <h2 class="loading-title">@PhaseTitle(Progress.Phase)</h2>
+            <p class="loading-context">@ContextLine(Progress)</p>
+            @if (Progress.OverallPercent > 0)
+            {
+                <progress class="loading-bar loading-bar-overall"
+                          max="100"
+                          value="@Progress.OverallPercent.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)"
+                          aria-label="Overall progress"></progress>
+                <p class="loading-percent">Overall @Progress.OverallPercent.ToString("F0")%</p>
+            }
+            else
+            {
+                <div class="loading-indeterminate" aria-hidden="true"></div>
+            }
+            @if (Progress.Total > 0)
+            {
+                <p class="loading-detail">@StepDetail(Progress)</p>
+            }
+            else if (!string.IsNullOrEmpty(Progress.Message))
+            {
+                <p class="loading-detail">@Progress.Message</p>
+            }
+            <p class="loading-hint">Large folders may take a minute.</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public LoadingProgress? Progress { get; set; }
+
+    private static string PhaseTitle(LoadPhase phase) => phase switch
+    {
+        LoadPhase.ReadingFiles => "Reading files",
+        LoadPhase.ParsingResources => "Parsing FHIR resources",
+        LoadPhase.MatchingResources => "Matching across IGs",
+        LoadPhase.Complete => "Complete",
+        _ => "Loading"
+    };
+
+    private static string ContextLine(LoadingProgress progress)
+    {
+        var parts = new List<string>
+        {
+            $"Step {progress.StepNumber} of {progress.StepCount}"
+        };
+
+        if (progress.IgCount > 0 && progress.IgIndex > 0 && !string.IsNullOrEmpty(progress.IgFolder))
+            parts.Add($"Folder {progress.IgIndex} of {progress.IgCount} · {progress.IgFolder}");
+        else if (progress.IgCount > 0)
+            parts.Add($"{progress.IgCount} IG folders");
+
+        return string.Join(" · ", parts);
+    }
+
+    private static string StepDetail(LoadingProgress progress)
+    {
+        var unit = progress.Phase switch
+        {
+            LoadPhase.ReadingFiles => "files",
+            LoadPhase.ParsingResources => "resources",
+            LoadPhase.MatchingResources => "IGs",
+            _ => "items"
+        };
+
+        return $"{progress.Current:N0} / {progress.Total:N0} {unit} in this step ({progress.PhasePercent:F0}%)";
+    }
+}

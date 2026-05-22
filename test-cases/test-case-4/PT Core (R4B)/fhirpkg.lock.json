@@ -1,0 +1,9 @@
+{
+  "updated": "2026-05-19T16:26:39.412165+02:00",
+  "dependencies": {
+    "portuguese.core.guide": "2.0.0",
+    "hl7.fhir.r4b.core": "4.3.0",
+    "hl7.terminology.r4b": "3.0.0"
+  },
+  "missing": {}
+}

@@ -1,0 +1,195 @@
+@using FhirIgComparison.Core.Models
+
+@if (Comparison is not null)
+{
+    <div class="comparison-controls">
+        <div class="dimension-tabs" role="tablist" aria-label="Comparison dimension">
+            @foreach (var dimension in _dimensions)
+            {
+                <button type="button"
+                        class="dimension-tab @(ActiveDimension == dimension ? "active" : "")"
+                        role="tab"
+                        aria-selected="@(ActiveDimension == dimension)"
+                        @onclick="() => OnDimensionChanged.InvokeAsync(dimension)">
+                    @DimensionLabel(dimension)
+                </button>
+            }
+        </div>
+
+        <div class="filter-field row-filter">
+            <label for="row-filter-select">Row filter</label>
+            <select id="row-filter-select" class="form-select" value="@RowFilter" @onchange="OnFilterChanged">
+                <option value="@ComparisonRowFilter.All">All</option>
+                <option value="@ComparisonRowFilter.DifferencesOnly">Differences only</option>
+                <option value="@ComparisonRowFilter.ConflictsOnly">Conflicts only</option>
+                <option value="@ComparisonRowFilter.MustSupportUnion">Must-support union</option>
+            </select>
+            <p class="filter-hint">@FilterDescription(RowFilter, ActiveDimension)</p>
+        </div>
+    </div>
+
+    <p class="text-muted matrix-meta">
+        Showing @_filteredRows.Count of @_dimensionRowCount @RowCountLabel(ActiveDimension)
+        · dimension: <strong>@DimensionLabel(ActiveDimension)</strong>
+    </p>
+
+    <div class="comparison-matrix-wrapper">
+        <div class="comparison-matrix-scroll">
+            <table class="table table-sm comparison-matrix">
+                <colgroup>
+                    <col class="col-element-id" />
+                    @foreach (var _ in Comparison.IgOrder)
+                    {
+                        <col class="col-ig" />
+                    }
+                    <col class="col-compat" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="element-col">Element ID</th>
+                        @foreach (var ig in Comparison.IgOrder)
+                        {
+                            <th class="ig-col">@ig</th>
+                        }
+                        <th class="compat-col">Compat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <Virtualize @key="_virtualizeKey" Items="_filteredRows" Context="row" ItemSize="44">
+                        @{
+                            var values = row.DisplayValuesByDimension.TryGetValue(ActiveDimension, out var v)
+                                ? v
+                                : [];
+                            var compat = row.CompatibilityByDimension.TryGetValue(ActiveDimension, out var c)
+                                ? c
+                                : null;
+                        }
+                        <tr class="comparison-row">
+                            <td class="element-col">@row.ElementId</td>
+                            @for (var i = 0; i < Comparison.IgOrder.Count; i++)
+                            {
+                                var ig = Comparison.IgOrder[i];
+                                Comparison.PackageScopeByIg.TryGetValue(ig, out var packageScope);
+                                var cell = i < values.Count ? values[i] : "—";
+                                var distinct = values.Where(x => x != "—").Distinct(StringComparer.Ordinal).ToList();
+                                var highlight = distinct.Count > 1 && cell != "—";
+                                <td class="ig-col @CellDiffClass(highlight)" title="@cell">
+                                    <CanonicalLinkedText Text="@cell" PackageScope="@packageScope" />
+                                </td>
+                            }
+                            @{
+                                var compatValue = compat?.CombinedValue ?? "—";
+                                var compatTitle = string.IsNullOrEmpty(compat?.Explanation)
+                                    ? compatValue
+                                    : $"{compatValue} — {compat!.Explanation}";
+                            }
+                            <td class="compat-col @CompatClass(compat?.Status)" title="@compatTitle">
+                                @compatValue
+                            </td>
+                        </tr>
+                    </Virtualize>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public ProfileComparisonResult? Comparison { get; set; }
+    [Parameter] public ComparisonDimension ActiveDimension { get; set; }
+    [Parameter] public ComparisonRowFilter RowFilter { get; set; }
+    [Parameter] public EventCallback<ComparisonDimension> OnDimensionChanged { get; set; }
+    [Parameter] public EventCallback<ComparisonRowFilter> OnRowFilterChanged { get; set; }
+
+    private List<ElementComparisonRow> _filteredRows = [];
+    private int _dimensionRowCount;
+    private string _virtualizeKey = "";
+    private static readonly ComparisonDimension[] _dimensions =
+    [
+        ComparisonDimension.Cardinality,
+        ComparisonDimension.MustSupport,
+        ComparisonDimension.Binding,
+        ComparisonDimension.Type,
+        ComparisonDimension.FixedPattern,
+        ComparisonDimension.Extensions,
+        ComparisonDimension.Slicing,
+        ComparisonDimension.Constraints,
+        ComparisonDimension.Mappings
+    ];
+
+    protected override void OnParametersSet() => RefreshFilteredRows();
+
+    private void RefreshFilteredRows()
+    {
+        if (Comparison is null)
+        {
+            _filteredRows = [];
+            return;
+        }
+
+        _dimensionRowCount = ActiveDimension == ComparisonDimension.Extensions
+            ? Comparison.Rows.Count(r => r.IsExtensionRow)
+            : Comparison.Rows.Count;
+
+        _filteredRows = Comparison.Rows
+            .Where(r => r.MatchesFilter(RowFilter, ActiveDimension))
+            .ToList();
+
+        _virtualizeKey = $"{_dimensionRowCount}:{Comparison.IgOrder.Count}:{ActiveDimension}:{RowFilter}:{_filteredRows.Count}";
+    }
+
+    private async Task OnFilterChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ComparisonRowFilter>(e.Value?.ToString(), out var filter))
+            await OnRowFilterChanged.InvokeAsync(filter);
+    }
+
+    private static string FilterDescription(ComparisonRowFilter filter, ComparisonDimension dimension)
+    {
+        var scope = dimension == ComparisonDimension.Extensions
+            ? "Extension paths (paths containing .extension or ending with extension)."
+            : "Every element path in the profile snapshot, including rows where all IGs agree.";
+
+        return filter switch
+        {
+            ComparisonRowFilter.All when dimension == ComparisonDimension.Extensions =>
+                scope,
+            ComparisonRowFilter.All =>
+                scope,
+            ComparisonRowFilter.DifferencesOnly =>
+                "Rows where at least two IGs differ for the active dimension (e.g. different cardinality or binding).",
+            ComparisonRowFilter.ConflictsOnly =>
+                "Rows where the combined requirement is impossible (e.g. contradictory cardinality or incompatible bindings).",
+            ComparisonRowFilter.MustSupportUnion =>
+                "Rows marked must-support in any IG — the cumulative obligation if you implement all profiles.",
+            _ => ""
+        };
+    }
+
+    private static string RowCountLabel(ComparisonDimension dimension) =>
+        dimension == ComparisonDimension.Extensions ? "extension paths" : "element paths";
+
+    private static string DimensionLabel(ComparisonDimension dimension) => dimension switch
+    {
+        ComparisonDimension.Cardinality => "Cardinality",
+        ComparisonDimension.MustSupport => "Must support",
+        ComparisonDimension.Binding => "Binding",
+        ComparisonDimension.Type => "Type",
+        ComparisonDimension.FixedPattern => "Fixed / pattern",
+        ComparisonDimension.Extensions => "Extensions",
+        ComparisonDimension.Slicing => "Slicing",
+        ComparisonDimension.Constraints => "Constraints",
+        ComparisonDimension.Mappings => "Mappings",
+        _ => dimension.ToString()
+    };
+
+    private static string CellDiffClass(bool highlight) => highlight ? "cell-diff" : "";
+
+    private static string CompatClass(CompatibilityStatus? status) => status switch
+    {
+        CompatibilityStatus.Conflict => "compat-conflict",
+        CompatibilityStatus.Warning => "compat-warning",
+        CompatibilityStatus.Compatible => "compat-ok",
+        _ => ""
+    };
+}

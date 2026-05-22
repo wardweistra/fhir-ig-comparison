@@ -1,0 +1,8 @@
+{
+  "updated": "2026-05-19T16:01:38.802908+02:00",
+  "dependencies": {
+    "nictiz.fhir.nl.stu3.zib2017": "2.3.2",
+    "hl7.fhir.r3.core": "3.0.2"
+  },
+  "missing": {}
+}

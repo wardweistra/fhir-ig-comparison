@@ -1,0 +1,268 @@
+﻿@page "/"
+@inject FolderAccessService FolderAccess
+@inject ComparisonState State
+@implements IDisposable
+
+<PageTitle>FHIR IG Comparison</PageTitle>
+
+<LoadingOverlay IsVisible="@State.IsLoading" Progress="@State.Progress" />
+
+<div class="container">
+    <header class="app-header">
+        <h1>FHIR IG Comparison</h1>
+        <p class="text-muted">Compare Implementation Guide packages locally using Firely (.NET WASM).</p>
+    </header>
+
+    <GettingStartedIntro HasSession="@(State.Session is not null)" />
+
+    <section class="actions">
+        <button class="btn btn-primary" @onclick="PickFolderAsync" disabled="@State.IsLoading">
+            @(State.IsLoading ? LoadingButtonLabel() : "Select comparison folder")
+        </button>
+    </section>
+
+    @if (!string.IsNullOrEmpty(State.ErrorMessage))
+    {
+        <div class="alert alert-danger" role="alert">@State.ErrorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(State.StatusMessage))
+    {
+        <p class="status-message">@State.StatusMessage</p>
+    }
+
+    @if (State.Session is not null)
+    {
+        <section class="ig-summary">
+            <h2>IG folders</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Folder</th>
+                        <th>Package</th>
+                        <th>FHIR version</th>
+                        <th>Status</th>
+                        <th>Resources</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ig in State.Session.Packages)
+                    {
+                        <tr class="@(ig.Validation.IsValid ? "" : "row-invalid")">
+                            <td>@ig.FolderName</td>
+                            <td>
+                                @{
+                                    var (packageDisplay, packageUrl) = GetPackageDisplayInfo(ig);
+                                }
+                                @if (packageUrl is not null)
+                                {
+                                    <a href="@packageUrl" target="_blank" rel="noopener noreferrer">@packageDisplay</a>
+                                }
+                                else
+                                {
+                                    @packageDisplay
+                                }
+                            </td>
+                            <td>@FormatFhirVersion(ig)</td>
+                            <td>
+                                @if (ig.Validation.IsValid)
+                                {
+                                    <span class="badge bg-success">Valid</span>
+                                }
+                                else
+                                {
+                                    <ul class="validation-errors">
+                                        @foreach (var err in ig.Validation.Errors)
+                                        {
+                                            <li>@err</li>
+                                        }
+                                    </ul>
+                                }
+                            </td>
+                            <td>@ig.ResourcesByCanonical.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="comparison-mode">
+            <h2>Comparison mode</h2>
+            <div class="mode-switcher" role="radiogroup" aria-label="Comparison mode">
+                <label class="mode-option">
+                    <input type="radio" name="comparisonMode" checked="@(State.Mode == ComparisonMode.ByResourceSelection)"
+                           @onchange="() => SetComparisonMode(ComparisonMode.ByResourceSelection)" />
+                    By resource selection
+                </label>
+                <label class="mode-option">
+                    <input type="radio" name="comparisonMode" checked="@(State.Mode == ComparisonMode.ByCanonicalUrl)"
+                           @onchange="() => SetComparisonMode(ComparisonMode.ByCanonicalUrl)" />
+                    By canonical URL
+                </label>
+            </div>
+        </section>
+
+        @if (State.Mode == ComparisonMode.ByCanonicalUrl)
+        {
+        <section class="matches">
+            <h2>Matched resources</h2>
+            <div class="filters">
+                <label>
+                    <input type="checkbox" @bind="_structureDefinitionOnly" @bind:after="OnFilterChanged" />
+                    StructureDefinition only
+                </label>
+                <label>
+                    <input type="checkbox" @bind="_twoOrMoreIgsOnly" @bind:after="OnFilterChanged" />
+                    Present in 2+ IGs only
+                </label>
+            </div>
+
+            <div class="matches-table-wrapper">
+                <table class="table table-sm matches-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Canonical URL</th>
+                            <th>IGs</th>
+                            <th>Category</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                </table>
+                <div class="matches-virtual-scroll">
+                    <table class="table table-sm matches-table">
+                        <tbody>
+                            <Virtualize Items="_filteredMatchesList" Context="group" ItemSize="52">
+                                <tr class="match-row @(State.SelectedMatch?.CanonicalUrl == group.CanonicalUrl ? "selected" : "")">
+                                    <td>@group.ResourceType</td>
+                                    <td class="canonical">@group.CanonicalUrl</td>
+                                    <td>@string.Join(", ", group.ResourcesByIg.Keys.OrderBy(k => k))</td>
+                                    <td><span class="badge @CategoryBadgeClass(group.Category)">@group.Category</span></td>
+                                    <td>
+                                        @if (group.ResourceType == "StructureDefinition" && group.IgCount >= 2)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => State.SelectMatch(group)">
+                                                Compare
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            </Virtualize>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-muted">Showing @FilteredMatchCount of @State.Session.MatchGroups.Count groups.</p>
+        </section>
+        }
+        else
+        {
+            <ManualComparisonPanel />
+        }
+
+        @if (State.Comparison is not null)
+        {
+            <ProfileComparisonPanel @key="State.ComparisonRevision" />
+        }
+    }
+</div>
+
+@code {
+    private bool _structureDefinitionOnly = true;
+    private bool _twoOrMoreIgsOnly = true;
+    private List<MatchGroup> _filteredMatchesList = [];
+
+    private IEnumerable<MatchGroup> FilteredMatches =>
+        (State.Session?.MatchGroups ?? [])
+            .Where(g => !_structureDefinitionOnly || g.ResourceType == "StructureDefinition")
+            .Where(g => !_twoOrMoreIgsOnly || g.IgCount >= 2);
+
+    private int FilteredMatchCount => _filteredMatchesList.Count;
+
+    private void RefreshFilteredMatches() =>
+        _filteredMatchesList = FilteredMatches.ToList();
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task PickFolderAsync()
+    {
+        State.SetError(null);
+        State.SetLoading(true);
+        try
+        {
+            var result = await FolderAccess.PickComparisonFolderWithProgressAsync(State);
+            if (result.WasCancelled)
+                return;
+
+            if (!string.IsNullOrEmpty(result.Error))
+            {
+                State.SetError(result.Error);
+                return;
+            }
+
+            if (result.Files.Count == 0)
+                return;
+
+            await State.LoadSessionAsync(result.RootName, result.Files);
+            RefreshFilteredMatches();
+        }
+        catch (Exception ex)
+        {
+            State.SetError(ex.Message);
+        }
+        finally
+        {
+            State.SetLoading(false);
+        }
+    }
+
+    private void OnFilterChanged()
+    {
+        RefreshFilteredMatches();
+        StateHasChanged();
+    }
+
+    private void SetComparisonMode(ComparisonMode mode) => State.SetMode(mode);
+
+    private static string CategoryBadgeClass(MatchCategory category) => category switch
+    {
+        MatchCategory.Full => "bg-success",
+        MatchCategory.Partial => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    private static string LoadingButtonLabel() => "Loading…";
+
+    private static string FormatFhirVersion(IgPackage ig)
+    {
+        var versions = ig.Manifest.FhirVersions;
+        if (versions is { Count: > 0 })
+            return string.Join(", ", versions);
+        return ig.FhirRelease.ToString();
+    }
+
+    private static (string Display, string? SimplifierUrl) GetPackageDisplayInfo(IgPackage ig)
+    {
+        if (ig.Validation.Layout == PackageLayout.FirelyTerminal
+            && !string.IsNullOrEmpty(ig.Validation.PrimaryPackageId))
+        {
+            var id = ig.Validation.PrimaryPackageId;
+            var version = ig.Validation.PrimaryPackageVersion;
+            var display = string.IsNullOrEmpty(version) ? id : $"{id}@{version}";
+            return (display, SimplifierUrls.GetPackageUrl(id, version));
+        }
+
+        var name = ig.Validation.PackageName ?? ig.Manifest.Name ?? "—";
+        var ver = ig.Validation.PackageVersion ?? ig.Manifest.Version;
+        var displayName = ver is not null ? $"{name} v{ver}" : name;
+        var url = name == "—" ? null : SimplifierUrls.GetPackageUrl(name, ver);
+        return (displayName, url);
+    }
+
+    public void Dispose() => State.OnChange -= HandleStateChanged;
+}

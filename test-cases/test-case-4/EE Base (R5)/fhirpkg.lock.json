@@ -1,0 +1,10 @@
+{
+  "updated": "2026-05-19T16:22:45.80538+02:00",
+  "dependencies": {
+    "ee.fhir.base": "2.0.0",
+    "hl7.terminology.r5": "6.5.0",
+    "hl7.fhir.uv.extensions.r5": "5.2.0",
+    "hl7.fhir.r5.core": "5.0.0"
+  },
+  "missing": {}
+}

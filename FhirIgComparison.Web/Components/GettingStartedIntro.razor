@@ -1,0 +1,116 @@
+<section class="getting-started" aria-labelledby="getting-started-heading">
+    <div class="getting-started-bar">
+        <h2 id="getting-started-heading" class="getting-started-title">
+            @if (_expanded)
+            {
+                <span>Getting started</span>
+            }
+            else
+            {
+                <span>Setup guide</span>
+            }
+        </h2>
+        <button type="button"
+                class="getting-started-toggle btn btn-secondary btn-sm"
+                aria-expanded="@_expanded"
+                aria-controls="getting-started-panel"
+                @onclick="Toggle">
+            @(_expanded ? "Collapse" : "Show setup steps")
+        </button>
+    </div>
+
+    @if (_expanded)
+    {
+        <div id="getting-started-panel" class="getting-started-panel">
+            <p class="getting-started-lede">
+                Compare Implementation Guide packages from your machine. Files are read with the
+                <a href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API"
+                   target="_blank"
+                   rel="noopener noreferrer">File System Access API</a>
+                and are not uploaded.
+            </p>
+
+            <p class="getting-started-note">
+                <strong>Browser:</strong> Chrome or Edge required for folder selection.
+            </p>
+
+            <ol class="getting-started-steps">
+                <li>
+                    <h3>Create a root folder with one subfolder per IG</h3>
+                    <p>
+                        Start by creating a parent folder for your analysis. Add one immediate subfolder
+                        for each Implementation Guide you want to compare.
+                    </p>
+                    <pre class="getting-started-code getting-started-tree"><code>comparison-root/
+  US Core/
+  NL Core/
+  UK Core/
+  ...</code></pre>
+                </li>
+                <li>
+                    <h3>Fill each subfolder with Firely Terminal</h3>
+                    <p>
+                        In each IG subfolder, install the primary package and restore the local cache.
+                        Each subfolder needs <code>package.json</code>, <code>fhirpkg.lock.json</code>, and
+                        <code>.fhir-package-cache/</code> with the primary package from
+                        <code>package.json</code> dependencies:
+                    </p>
+                    <pre class="getting-started-code"><code>cd "US Core"
+fhir install hl7.fhir.us.core
+fhir cache use-local
+fhir restore</code></pre>
+                    <pre class="getting-started-code getting-started-tree"><code>comparison-root/
+  US Core/
+    package.json
+    fhirpkg.lock.json
+    .fhir-package-cache/
+      hl7.fhir.us.core#9.0.0-ballot/package/*.json
+  NL Core/
+    ...</code></pre>
+                    <p class="getting-started-meta">
+                        See the
+                        <a href="https://fire.ly/products/firely-terminal/"
+                           target="_blank"
+                           rel="noopener noreferrer">Firely Terminal</a>
+                        docs if you have not set up packages yet.
+                    </p>
+                </li>
+                <li>
+                    <h3>Select the root folder</h3>
+                    <p>
+                        Click <strong>Select comparison folder</strong> below and choose the parent folder
+                        (for example <code>comparison-root/</code>), not an individual IG subfolder.
+                    </p>
+                </li>
+                <li>
+                    <h3>Review matches and compare profiles</h3>
+                    <p>
+                        The app indexes resources by canonical URL, groups them across IGs, and highlights
+                        StructureDefinition snapshot differences (cardinality, short text, and more) when a
+                        profile appears in two or more guides.
+                    </p>
+                </li>
+            </ol>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public bool HasSession { get; set; }
+
+    private bool _expanded = true;
+    private bool _userToggled;
+
+    protected override void OnParametersSet()
+    {
+        if (HasSession && !_userToggled)
+            _expanded = false;
+    }
+
+    private void Toggle()
+    {
+        _userToggled = true;
+        _expanded = !_expanded;
+    }
+}

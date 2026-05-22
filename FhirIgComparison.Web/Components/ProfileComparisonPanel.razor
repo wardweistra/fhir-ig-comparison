@@ -1,0 +1,59 @@
+@inject ComparisonState State
+
+<section class="profile-comparison">
+    <h2>StructureDefinition comparison</h2>
+
+    @if (State.Mode == ComparisonMode.ByResourceSelection)
+    {
+        <p class="diff-summary">
+            <strong>@State.ManualSelection.ResourceType</strong>
+            @if (!string.IsNullOrEmpty(State.ManualSelection.StructureDefinitionBaseType))
+            {
+                <span> · base type <strong>@State.ManualSelection.StructureDefinitionBaseType</strong></span>
+            }
+        </p>
+        <ul class="diff-selection-list">
+            @foreach (var ig in State.Comparison?.IgOrder ?? [])
+            {
+                if (State.ManualSelection.SelectedCanonicalByIg.TryGetValue(ig, out var url))
+                {
+                    <li><strong>@ig:</strong> <span class="canonical">@url</span></li>
+                }
+            }
+        </ul>
+    }
+    else if (State.SelectedMatch is not null)
+    {
+        <p class="canonical"><strong>@State.SelectedMatch.CanonicalUrl</strong></p>
+    }
+
+    <button class="btn btn-sm btn-secondary mb-2" @onclick="Close">Close comparison</button>
+
+    @if (State.Comparison is not null)
+    {
+        <ProfileSummaryHeader Summary="State.Comparison.Summary" />
+
+        <ComparisonMatrix @key="State.ComparisonRevision"
+                          Comparison="State.Comparison"
+                          ActiveDimension="State.ActiveDimension"
+                          RowFilter="State.RowFilter"
+                          OnDimensionChanged="OnDimensionChanged"
+                          OnRowFilterChanged="OnRowFilterChanged" />
+    }
+</section>
+
+@code {
+    private void Close() => State.ClearSelection();
+
+    private Task OnDimensionChanged(ComparisonDimension dimension)
+    {
+        State.SetActiveDimension(dimension);
+        return Task.CompletedTask;
+    }
+
+    private Task OnRowFilterChanged(ComparisonRowFilter filter)
+    {
+        State.SetRowFilter(filter);
+        return Task.CompletedTask;
+    }
+}

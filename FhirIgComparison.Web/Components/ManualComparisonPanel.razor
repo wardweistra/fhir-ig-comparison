@@ -1,0 +1,152 @@
+@inject ComparisonState State
+@implements IDisposable
+
+<section class="manual-comparison">
+    <h2>Compare by resource selection</h2>
+    <p class="text-muted">Pick a resource type and profiles to compare. You do not need a selection in every IG folder—only choose the guides you want to include.</p>
+
+    <div class="manual-filters">
+        <label class="filter-field">
+            <span>Resource type</span>
+            <select class="form-select" value="@State.ManualSelection.ResourceType" @onchange="OnResourceTypeChanged">
+                @foreach (var type in _resourceTypes)
+                {
+                    <option value="@type">@type</option>
+                }
+            </select>
+        </label>
+
+        @if (_showBaseType)
+        {
+            <label class="filter-field">
+                <span>Base type</span>
+                <select class="form-select" value="@State.ManualSelection.StructureDefinitionBaseType" @onchange="OnBaseTypeChanged">
+                    @foreach (var baseType in _baseTypes)
+                    {
+                        <option value="@baseType">@baseType</option>
+                    }
+                </select>
+            </label>
+        }
+    </div>
+
+    <table class="table table-sm manual-selection-table">
+        <thead>
+            <tr>
+                <th>IG folder</th>
+                <th>Resource to compare</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var igFolder in _igFolders)
+            {
+                <tr>
+                    <td>@igFolder</td>
+                    <td>
+                        <select class="form-select" value="@GetSelectedCanonical(igFolder)" @onchange="e => OnIgSelectionChanged(igFolder, e)">
+                            <option value="">— Select —</option>
+                            @foreach (var candidate in GetCandidates(igFolder))
+                            {
+                                <option value="@candidate.CanonicalUrl">@TruncateLabel(candidate.DropdownLabel)</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="manual-actions">
+        @if (State.CanCompareManualSelection)
+        {
+            <button class="btn btn-primary" @onclick="Compare">Compare selected resources</button>
+        }
+        else if (!State.ManualSelection.ResourceType.Equals("StructureDefinition", StringComparison.OrdinalIgnoreCase))
+        {
+            <p class="manual-hint">Element-level diff is only available for StructureDefinition.</p>
+        }
+        else
+        {
+            <button class="btn btn-primary" disabled>Compare selected resources</button>
+            <p class="manual-hint">Select at least two resources to compare.</p>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(State.ManualComparisonMessage))
+    {
+        <p class="manual-message">@State.ManualComparisonMessage</p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<string> _resourceTypes = [];
+    private IReadOnlyList<string> _baseTypes = [];
+    private IReadOnlyList<string> _igFolders = [];
+    private bool _showBaseType;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        RefreshLists();
+    }
+
+    private void HandleStateChanged() =>
+        InvokeAsync(() =>
+        {
+            RefreshLists();
+            StateHasChanged();
+        });
+
+    public void Dispose() => State.OnChange -= HandleStateChanged;
+
+    private void RefreshLists()
+    {
+        if (State.Catalog is null)
+        {
+            _resourceTypes = [];
+            _baseTypes = [];
+            _igFolders = [];
+            _showBaseType = false;
+            return;
+        }
+
+        _resourceTypes = State.Catalog.GetResourceTypes();
+        _baseTypes = State.Catalog.GetStructureDefinitionBaseTypes();
+        _igFolders = State.Catalog.GetValidIgFolders();
+        _showBaseType = State.ManualSelection.ResourceType.Equals(
+            "StructureDefinition", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IReadOnlyList<ResourceCandidate> GetCandidates(string igFolder) =>
+        State.Catalog?.GetCandidates(
+            igFolder,
+            State.ManualSelection.ResourceType,
+            State.ManualSelection.StructureDefinitionBaseType) ?? [];
+
+    private string GetSelectedCanonical(string igFolder) =>
+        State.ManualSelection.SelectedCanonicalByIg.TryGetValue(igFolder, out var url) ? url : "";
+
+    private void OnResourceTypeChanged(ChangeEventArgs e)
+    {
+        State.OnManualResourceTypeChanged(e.Value?.ToString() ?? "StructureDefinition");
+        RefreshLists();
+    }
+
+    private void OnBaseTypeChanged(ChangeEventArgs e)
+    {
+        State.OnManualBaseTypeChanged(e.Value?.ToString());
+        RefreshLists();
+    }
+
+    private void OnIgSelectionChanged(string igFolder, ChangeEventArgs e) =>
+        State.SetManualSelection(igFolder, e.Value?.ToString());
+
+    private void Compare() => State.CompareManualSelection();
+
+    private static string TruncateLabel(string label) =>
+        label.Length <= 80 ? label : label[..77] + "…";
+}

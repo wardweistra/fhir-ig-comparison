@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FhirIgComparison.Core.Tests/FhirIgComparison.Core.Tests.csproj" />
+  <Project Path="FhirIgComparison.Core/FhirIgComparison.Core.csproj" />
+  <Project Path="FhirIgComparison.Web/FhirIgComparison.Web.csproj" />
+</Solution>
