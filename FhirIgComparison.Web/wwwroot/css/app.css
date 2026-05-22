@@ -759,3 +759,34 @@ section h2 {
         animation: none;
     }
 }
+
+/* Site footer */
+.app-footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 2.5rem;
+    border-top: 1px solid #d0d7de;
+}
+
+.app-footer-text {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #57606a;
+    line-height: 1.5;
+}
+
+.app-footer-link {
+    color: #0969da;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.app-footer-link:hover {
+    text-decoration: underline;
+}
+
+.app-footer-link:focus-visible {
+    outline: 2px solid #0969da;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
